@@ -1,0 +1,3 @@
+[console_scripts]
+ts_viz = insarviz.ts_viz:main
+
