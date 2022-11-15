@@ -361,7 +361,8 @@ class Loader_gps():
         print("loader -- get_gps_file_y_axis")
         orientation_array = [re.split(r"\s", x)[position] for x in lines if re.search(r"\d{4}\s\d{2}\s\d{2}", x)]
         orientation_array_rel = [(float(x) - float(orientation_array[0])) for x in orientation_array]
-        return orientation_array_rel, orientation_array[0]
+        # return orientation_array_rel, orientation_aray[0]
+        return orientation_array, orientation_array[0]
 
     def get_coord(self, lines):
 
