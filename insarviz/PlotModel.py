@@ -540,7 +540,7 @@ class PlotModel_gps(QObject):
             self.current_y)
 
 
-        self.thispoint_gps_date, self.thispoint_gps_east, self.thispoint_gps_north, self.thispoint_gps_up = self.loader_gps.load_profile(self.current_station)
+        self.thispoint_gps_date, self.thispoint_gps_north, self.thispoint_gps_east, self.thispoint_gps_up = self.loader_gps.load_profile(self.current_station)
 
 
         # print("gps_date = ",self.thispoint_gps_date)
