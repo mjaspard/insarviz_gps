@@ -11,6 +11,6 @@ source env/bin/activate							# activer l’environnement
 
 python -m pip install -r requirements.txt				# Installer tous les packages python nécessaire
 
-python -m pip install .							# Installer InSAR_viz
+python -m pip install -e .							# Installer InSAR_viz
 
 ts_viz										# Lancer l'appli
