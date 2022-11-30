@@ -202,14 +202,14 @@ class myPlotWindow(QWidget):
         self.toolbar.addWidget(self.theme_switch)
         self.toolbar.addWidget(QLabel('white'))
         self.toolbar.addSeparator()
-        if self. ptype == 'temporal':
-            self.ref_tick = QCheckBox('Reference', self)
-            self.ref_tick.setCheckable(False)
-        # self.ref_tick.stateChanged.connect(
-        #     lambda: self.plot_widget.connect_CurveClicked_Ref(
-        #         self.ref_tick))
-            self.ref_tick.stateChanged.connect(self.set_ref_status)
-            self.toolbar.addWidget(self.ref_tick)
+        # if self. ptype == 'temporal':
+        self.ref_tick = QCheckBox('Reference', self)
+        self.ref_tick.setCheckable(False)
+    # self.ref_tick.stateChanged.connect(
+    #     lambda: self.plot_widget.connect_CurveClicked_Ref(
+    #         self.ref_tick))
+        self.ref_tick.stateChanged.connect(self.set_ref_status)
+        self.toolbar.addWidget(self.ref_tick)
 
         # layout
         layout = QVBoxLayout()
@@ -797,14 +797,15 @@ class myPlotWindow_gps(QWidget):
         self.toolbar.addWidget(QLabel('white'))
         self.toolbar.addSeparator()
         if self. ptype == 'temporal':
-            # self.ref_tick = QCheckBox('Reference', self)
-            # self.ref_tick.setCheckable(False)
+            self.ref_tick = QCheckBox('Reference', self)
+            self.ref_tick.setCheckable(True)
         # self.ref_tick.stateChanged.connect(
         #     lambda: self.plot_widget.connect_CurveClicked_Ref(
         #         self.ref_tick))
-            # self.ref_tick.stateChanged.connect(self.set_ref_status)
-            # self.toolbar.addWidget(self.ref_tick)
-            # self.toolbar.addSeparator()
+            self.ref_tick.stateChanged.connect(self.set_ref_status)
+            self.toolbar.addWidget(self.ref_tick)
+            self.toolbar.addSeparator()
+
             self.toolbar.addWidget(QLabel('Stations'))
             self.menu_station = QComboBox()
             self.menu_station.addItems(self.plot_model.station_gps)
@@ -873,20 +874,29 @@ class myPlotWindow_gps(QWidget):
     #     self.plot_model.ref_pointers = None
     #     print("myPlotWindow_gps -- on_button_clicked_clearplot -- finished")
 
-    # def set_ref_status(self):
-    #     print("myPlotWindow_gps -- set_ref_status")
-    #     self.plot_model.ref_is_checked = self.ref_tick.isChecked()
-    #     if (
-    #             not self.plot_model.ref_is_checked and
-    #             self.plot_model.plot_istate == 0):
-    #         self.plot_model.ref_curve_id = None
-    #         self.plot_widget.plotLoadedData()
+    def set_ref_status(self):
+        print("myPlotWindow_gps -- set_ref_status")
+        print("-- ref_tick = ", self.ref_tick.isChecked())
+        self.plot_model.ref_is_checked = self.ref_tick.isChecked()
+        if (
+                not self.plot_model.ref_is_checked and
+                self.plot_model.plot_istate == 0):
+
+            self.plot_model.ref_curve_id = None
+            self.plot_widget.plotLoadedData()
+
+        else:
+            self.plot_widget.plotLoadedData()
+        print("myPlotWindow_gps -- set_ref_status finished")
 
     def update_station(self):
         """ Function call when station sselector has changed
         """
         print("myPlotWindow_gps -- update_station")
 
+
+        # rinitialise reference option
+        self.ref_tick.setChecked(False)
         # print(self.menu_station.currentText())
         self.plot_model.on_data_reloaded(self.menu_station.currentText(), self.menu_orientation.currentText())       # update selected gps station data and map
         # print("PlotView -- plot_istate = ", self.plot_model.plot_istate)
@@ -930,6 +940,9 @@ class myPlotWidget_gps(pg.GraphicsLayoutWidget):
         super().__init__()
         self.plot_model = plot_model
         self.ptype = plottype
+        self.plot_ref = False
+        self.plot_ref_y = 0
+        self.plot_ref_y_gps = 0
 
         self.initUI()
         print("myPlotWidget_gps -- object creation -- finished")
@@ -973,16 +986,16 @@ class myPlotWidget_gps(pg.GraphicsLayoutWidget):
 
         # interactive curve
         self.icurve = pg.PlotDataItem(pen=pg.mkPen((255, 0, 0), width=2),
-                                      # symbol='o',
-                                      symbolSize=1,
+                                      symbol='o',
+                                      symbolSize=5,
                                       antialias=True)
         self.icurve_gps = pg.PlotDataItem(pen=pg.mkPen((255, 255, 0), width=2),
                                       # symbol='o',
-                                      symbolSize=1,
+                                      symbolSize=2,
                                       antialias=True)
 
-        # self.icurve.sigPointsClicked.connect(self.dataPointsClicked)
-        # self.icurve_gps.sigPointsClicked.connect(self.dataPointsClicked)
+        self.icurve.sigPointsClicked.connect(self.dataPointsClicked)
+        self.icurve_gps.sigPointsClicked.connect(self.dataPointsClicked)
         self.main_plot.addItem(self.icurve)
         self.main_plot.addItem(self.icurve_gps)
 
@@ -998,7 +1011,7 @@ class myPlotWidget_gps(pg.GraphicsLayoutWidget):
                                          symbolSize=5,
                                          antialias=True)
             self.curve.opts['name'] = idx
-            # self.curve.sigPointsClicked.connect(self.dataPointsClicked)
+            self.curve.sigPointsClicked.connect(self.dataPointsClicked)
             # self.curve.sigClicked.connect(self.plotLoadedData_toRef)
             self.main_plot.addItem(self.curve)
             self.curves.append(self.curve)
@@ -1051,11 +1064,36 @@ class myPlotWidget_gps(pg.GraphicsLayoutWidget):
 
             # print("nb_lines = ",nb_lines)
 
+            # Aligne both curve on a new reference 0 by clicking on the deformation plot
+            if self.plot_ref:
 
-            if self.plot_model.ref_curve_id is not None:
-                y = y - self.plot_model.ref_curve_data
-            elif self.plot_model.ref_pointers is not None:
-                y = y - self.plot_model.ref_data
+                # manage gps ref value finding the indice of closest point from timestamp of clickek events
+                # Calculate new time series based on reference
+                x_array = np.asarray(x)                                 # Convert timestamp array 
+                idx = (np.abs(x_array - self.plot_ref_x)).argmin()      # extract index from points clicekd by user (or closest points)
+                y_r = y - y[int(idx)]                   # substract from all points in y axis the y value at the index
+                print("-----> y idx = ", idx)
+                print("-----> y ref  = ", y[int(idx)])
+
+
+                x_gps_array = np.asarray(x_gps)                         # Convert timestamp array 
+                idx = (np.abs(x_gps_array - self.plot_ref_x)).argmin()  # extract index from points clicekd by user (or closest points)
+                y_gps_r = [x - y_gps[int(idx)] for x in y_gps]          # substract from all points in y axis the y value at the index
+                print("-----> y_gps idx = ", idx)
+                print("-----> y_gps ref  = ", y_gps[int(idx)])
+
+
+                if np.isnan(y_r).all():
+                    x = np.array([0.])
+                    y_r = np.array([0.])
+
+
+            # if self.plot_model.ref_curve_id is not None:
+            #     y = y - self.plot_model.ref_curve_data
+            # elif self.plot_model.ref_pointers is not None:
+            #     y = y - self.plot_model.ref_data
+
+
         elif self.ptype == 'spatial':
             y = self.plot_model.data_for_spatial_graph
             if self.plot_model.plot_istate != 4:
@@ -1082,6 +1120,8 @@ class myPlotWidget_gps(pg.GraphicsLayoutWidget):
             x = np.array([0.])
             y = np.array([0.])
 
+
+
         # plot data:
         # if self.plot_model.plot_istate == LIVE:
         #     if (not self.plot_model.ready_for_REF and
@@ -1089,8 +1129,15 @@ class myPlotWidget_gps(pg.GraphicsLayoutWidget):
         #         not self.plot_model.ready_for_POINTS):
         #         if self.ptype == 'temporal':
         #             # live plotting
-        self.icurve.setData(x, y)
-        self.icurve_gps.setData(x_gps, y_gps)
+        if self.plot_ref:
+            self.icurve.setData(x, y_r)
+            self.icurve_gps.setData(x_gps, y_gps_r)
+        else:
+            self.icurve.setData(x, y)
+            self.icurve_gps.setData(x_gps, y_gps)
+        self.plot_ref = False
+
+
         # if self.parentWidget().zoom_button.isChecked():
         #     self.icurve2.show()
         #     self.icurve2.setData(x, y)
@@ -1213,86 +1260,90 @@ class myPlotWidget_gps(pg.GraphicsLayoutWidget):
     #     print("myPlotWidget_gps -- updateZoomRegion")
     #     self.lr.setRegion(self.zoom_plot.getViewBox().viewRange()[0])
 
-    # def dataPointsClicked(self, points, ev):
-    #     """
-    #     Overloaded signal.
-    #     Display coordinates of clicked data point and
-    #     highlight clicked curve in the main plot.
-    #     Receive param from sigPointsClicked signal on main plot's curves.
+    def dataPointsClicked(self, points, ev):
+        """
+        Overloaded signal.
+        Display coordinates of clicked data point and
+        highlight clicked curve in the main plot.
+        Receive param from sigPointsClicked signal on main plot's curves.
 
-    #     Parameters
-    #     ----------
-    #     points : plotDataItem
-    #         the 1st param name `first`
-    #     ev : list
-    #         list of SpotItems (see pyqtgraph doc) corresponding to the
-    #         clicked point (or points?)
+        Parameters
+        ----------
+        points : plotDataItem
+            the 1st param name `first`
+        ev : list
+            list of SpotItems (see pyqtgraph doc) corresponding to the
+            clicked point (or points?)
 
-    #     Returns
-    #     -------
-    #     None
-    #     """
-    #     # points=plotDataItem (curve), ev=SpotItem (selected point on curve)
+        Returns
+        -------
+        None
+        """
+        # points=plotDataItem (curve), ev=SpotItem (selected point on curve)
 
-    #     # highlight point on Map:
-    #     print("myPlotWidget_gps -- dataPointsClicked")
+        # highlight point on Map:
+        print("myPlotWidget_gps -- dataPointsClicked")
 
-    #     self.plot_model.map_model.show_points(
-    #         pointers=self.plot_model.all_pointer_ij,
-    #         highlight=points.name())
-    #     # restore state of previous data selected:
-    #     if self.prev_points:
-    #         self.prev_points.setPen(self.saved_pen)
-    #         try:
-    #             # if prev clicked point for data info
-    #             self.main_plot.removeItem(self.text)
-    #             self.main_plot.removeItem(self.arrow)
-    #         except AttributeError:
-    #             # if prev clicked point for different ref
-    #             pass
+        # self.plot_model.map_model.show_points(
+        #     pointers=self.plot_model.all_pointer_ij,
+        #     highlight=points.name())
+        # # restore state of previous data selected:
+        # if self.prev_points:
+        #     self.prev_points.setPen(self.saved_pen)
+        #     try:
+        #         # if prev clicked point for data info
+        #         self.main_plot.removeItem(self.text)
+        #         self.main_plot.removeItem(self.arrow)
+        #     except AttributeError:
+        #         # if prev clicked point for different ref
+        #         pass
 
-    #     # save state to be restored at next data selection:
-    #     self.saved_pen = points.opts['pen']
+        # save state to be restored at next data selection:
+        self.saved_pen = points.opts['pen']
 
-    #     # highlight current data selection:
-    #     points.setPen(width=4, color=(0, 255, 0))
+        # highlight current data selection:
+        # points.setPen(width=4, color=(0, 255, 0))
 
-    #     if (
-    #             self.plot_model.ref_is_checked and
-    #             self.ptype == 'temporal'):
-    #         self.plot_model.ref_curve_id = int(points.name())
-    #         self.plot_model.ref_curve_data = \
-    #             self.plot_model.data_for_temporal_graph[
-    #                 self.plot_model.ref_curve_id]
-    #         self.plotLoadedData()
+        if (
+                self.plot_model.ref_is_checked and
+                self.ptype == 'temporal'):
 
-    #     else:
-    #         # add selected data point info
-    #         self.arrow = pg.ArrowItem(pos=(ev[0].pos()), angle=-90)
-    #         self.main_plot.addItem(self.arrow)
+            # self.plot_model.ref_curve_id = int(points.name())
+            # self.plot_model.ref_curve_data = \
+            #     self.plot_model.data_for_temporal_graph[
+            #         self.plot_model.ref_curve_id]
+            self.plot_ref = True
+            self.plot_ref_x = ev[0].pos().x()
+            # self.plot_ref_y_gps = 
+            self.plotLoadedData()
 
-    #         if self.ptype == 'temporal':
-    #             t = datetime.datetime.utcfromtimestamp(
-    #                 ev[0].pos().x()).strftime('%Y-%m-%d')
-    #             self.text = pg.TextItem(text=(f"{t}"
-    #                                           f"\n{ev[0].pos().y():.3f}"),
-    #                                     anchor=(0.5, 1.5),
-    #                                     border='w',
-    #                                     fill=(0, 0, 255, 100))
-    #         elif self.ptype == 'spatial':
-    #             self.text = pg.TextItem(text=(f"{ev[0].pos().x():.3f}"
-    #                                           f"\n{ev[0].pos().y():.3f}"),
-    #                                     anchor=(0.5, 1.5),
-    #                                     border='w',
-    #                                     fill=(0, 0, 255, 100))
+        # else:
+        #     # add selected data point info
+        #     self.arrow = pg.ArrowItem(pos=(ev[0].pos()), angle=-90)
+        #     self.main_plot.addItem(self.arrow)
 
-    #         self.main_plot.addItem(self.text)
-    #         self.text.setPos(ev[0].pos())
-    #         # ev[0].setSize(20)
+        #     if self.ptype == 'temporal':
+        #         t = datetime.datetime.utcfromtimestamp(
+        #             ev[0].pos().x()).strftime('%Y-%m-%d')
+        #         self.text = pg.TextItem(text=(f"{t}"
+        #                                       f"\n{ev[0].pos().y():.3f}"),
+        #                                 anchor=(0.5, 1.5),
+        #                                 border='w',
+        #                                 fill=(0, 0, 255, 100))
+        #     # elif self.ptype == 'spatial':
+        #     #     self.text = pg.TextItem(text=(f"{ev[0].pos().x():.3f}"
+        #     #                                   f"\n{ev[0].pos().y():.3f}"),
+        #     #                             anchor=(0.5, 1.5),
+        #     #                             border='w',
+        #     #                             fill=(0, 0, 255, 100))
 
-    #     self.prev_points = points
+        #     self.main_plot.addItem(self.text)
+        #     self.text.setPos(ev[0].pos())
+        #     # ev[0].setSize(20)
 
-    #     print("myPlotWidget_gps -- dataPointsClicked -- finished")
+        self.prev_points = points
+
+        print("myPlotWidget_gps -- dataPointsClicked -- finished")
 
     @pyqtSlot(bool)
     def setStyle(self, style):

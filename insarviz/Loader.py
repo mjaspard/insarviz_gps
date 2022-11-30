@@ -283,7 +283,7 @@ class Loader_gps():
         if os.path.isdir(gps_folder): 
             target = "{}/*".format(gps_folder)
             file_list = [x for x in glob.glob(target) if re.search(r".*\.txt$", x)]
-
+            file_list.sort()
 
             # Create gps dictionary data
             self.gps_data = {}

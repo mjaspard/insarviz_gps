@@ -418,7 +418,8 @@ class PlotModel_gps(QObject):
 
 
         # interaction state of map for plots:
-        self.plot_istate = IDLE
+        # self.plot_istate = IDLE
+        self.plot_istate = 0
 
         self.ref_curve_id = None
         self.ref_is_checked = False

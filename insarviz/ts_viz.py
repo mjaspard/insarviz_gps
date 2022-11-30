@@ -416,6 +416,7 @@ class MainWindow(QMainWindow):
 
 
         # Set object "MapView" to self.plot_model_gps in order to refresh screen ans gps station status when selected station change
+        self.plot_model_gps.map_model = self.map_model
         self.plot_model_gps.map_widget = self.map_widget
         # Set object self.plot_model_gps to MapView in order to get access to gps data (coordinate and selection) to disply on map 
         self.map_widget.plot_model_gps = self.plot_model_gps
