@@ -2,3 +2,5 @@
 env/
 testmax
 all_pf_east
+all_*
+test*
