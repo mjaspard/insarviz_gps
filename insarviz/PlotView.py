@@ -825,33 +825,24 @@ class myPlotWindow_gps(QWidget):
 
         # Add Toolbar for entering LOS RadarLook information
         self.toolbar_RL = QHBoxLayout()
-        self.RL_Asc_East = QLineEdit()
-        self.RL_Asc_East.textEdited.connect(self.check_radarlook)
-        self.RL_Asc_North = QLineEdit()
-        self.RL_Asc_North.textEdited.connect(self.check_radarlook)
-        self.RL_Asc_Up = QLineEdit()
-        self.RL_Asc_Up.textEdited.connect(self.check_radarlook)
-        self.RL_Desc_East = QLineEdit()
-        self.RL_Desc_East.textEdited.connect(self.check_radarlook)
-        self.RL_Desc_North = QLineEdit()
-        self.RL_Desc_North.textEdited.connect(self.check_radarlook)
-        self.RL_Desc_Up = QLineEdit()
-        self.RL_Desc_Up.textEdited.connect(self.check_radarlook)
+        self.RL_East = QLineEdit()
+        self.RL_East.setMaximumWidth(100)
+        self.RL_East.textEdited.connect(self.check_radarlook)
+        self.RL_North = QLineEdit()
+        self.RL_North.setMaximumWidth(100)
+        self.RL_North.textEdited.connect(self.check_radarlook)
+        self.RL_Up = QLineEdit()
+        self.RL_Up.setMaximumWidth(100)
+        self.RL_Up.textEdited.connect(self.check_radarlook)
         self.btn_validate_RL = QPushButton("Validate")
         self.btn_validate_RL.clicked.connect(self.validate_radarlook)
-        self.toolbar_RL.addWidget(QLabel('RDL Asc = ['))
-        self.toolbar_RL.addWidget(self.RL_Asc_East)
-        # self.toolbar_RL.addWidget(QLabel(','))
-        self.toolbar_RL.addWidget(self.RL_Asc_North)
-        # self.toolbar_RL.addWidget(QLabel(','))
-        self.toolbar_RL.addWidget(self.RL_Asc_Up)
-        self.toolbar_RL.addWidget(QLabel(']   RDL Desc = ['))
-        self.toolbar_RL.addWidget(self.RL_Desc_East)
-        # self.toolbar_RL.addWidget(QLabel(','))
-        self.toolbar_RL.addWidget(self.RL_Desc_North)
-        # self.toolbar_RL.addWidget(QLabel(','))
-        self.toolbar_RL.addWidget(self.RL_Desc_Up)
-        self.toolbar_RL.addWidget(QLabel(']  '))
+        self.toolbar_RL.addWidget(QLabel('Radar Look = ['))
+        self.toolbar_RL.addWidget(self.RL_East)
+        self.toolbar_RL.addWidget(QLabel(','))
+        self.toolbar_RL.addWidget(self.RL_North)
+        self.toolbar_RL.addWidget(QLabel(','))
+        self.toolbar_RL.addWidget(self.RL_Up)
+        self.toolbar_RL.addWidget(QLabel(']'))
         self.toolbar_RL.addWidget(self.btn_validate_RL)
         # Manage both Toolbar to be displayed
 
@@ -936,7 +927,7 @@ class myPlotWindow_gps(QWidget):
         print("myPlotWindow_gps -- update_station")
 
         # Manage RadarLook value and disbale LOS if not in range
-        print("----> Radar Look value (east) = ", self.RL_Asc_East.text())
+        print("----> Radar Look value (east) = ", self.RL_East.text())
 
 
         # rinitialise reference option
@@ -961,7 +952,7 @@ class myPlotWindow_gps(QWidget):
         print("myPlotWindow_gps -- validate_radarlook")
         check = 0
         self.plot_model.radal_look_data_ok = False
-        for value in [self.RL_Asc_East, self.RL_Asc_North, self.RL_Asc_Up, self.RL_Desc_East, self.RL_Desc_North, self.RL_Desc_Up]:
+        for value in [self.RL_East, self.RL_North, self.RL_Up]:
    
             print("---> type of value = ", type(value))
             if re.search(r"^-?0(\.\d*)?$", str(value.text())) or re.search(r"^-?1(\.0+)?$", str(value.text())):  # ? means 0 or 1 occurence
@@ -971,23 +962,22 @@ class myPlotWindow_gps(QWidget):
                 value.setStyleSheet("color: red;")
 
 
-        if check == 6:
+        if check == 3:
             print("---> activate LOS deformation")
             self.btn_validate_RL.setEnabled(False)
-            self.menu_orientation.addItems(['LOS_Asc', 'LOS_Desc'])
+            self.menu_orientation.addItems(['LOS'])
             self.plot_model.radal_look_data_ok = True
-            self.plot_model.radal_look_data = [self.RL_Asc_East.text(), self.RL_Asc_North.text(), self.RL_Asc_Up.text(), self.RL_Desc_East.text(), self.RL_Desc_North.text(), self.RL_Desc_Up.text()]
+            self.plot_model.radal_look_data = [self.RL_East.text(), self.RL_North.text(), self.RL_Up.text()]
 
     def check_radarlook(self):
         """This function is called during editing Radar look value, it will turn from grey to black the text and re-enable the validate button"""
 
         print("myPlotWindow_gps -- check_radarlook")
-        for value in [self.RL_Asc_East, self.RL_Asc_North, self.RL_Asc_Up, self.RL_Desc_East, self.RL_Desc_North, self.RL_Desc_Up]:
+        for value in [self.RL_East, self.RL_North, self.RL_Up]:
 
                 value.setStyleSheet("color: black;")
                 self.btn_validate_RL.setEnabled(True)
                 self.menu_orientation.removeItem(3)
-                self.menu_orientation.removeItem(4)
                 self.plot_model.radal_look_data_ok = False
 
 
