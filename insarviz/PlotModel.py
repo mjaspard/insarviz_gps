@@ -6,6 +6,7 @@ from PyQt5.QtCore import (
 
 import numpy as np
 import datetime
+from math import*
 
 from insarviz.Interaction import IDLE, DRAG, ZOOM, POINTS, LIVE, PROFILE
 
@@ -434,6 +435,8 @@ class PlotModel_gps(QObject):
         self.station_gps = []
         self.station_gps_data = {}
         self.menu_orientation = 'up'
+        self.radal_look_data_ok = False
+        self.radal_look_data = []
 
         print("PlotModel_GPS. -- object creation --finisehd")
 
@@ -543,6 +546,30 @@ class PlotModel_gps(QObject):
 
         self.thispoint_gps_date, self.thispoint_gps_north, self.thispoint_gps_east, self.thispoint_gps_up = self.loader_gps.load_profile(self.current_station)
 
+        #Calculate GPS deformation in LOS projection using Radar Look indice value enetere manually 
+        if self.radal_look_data_ok:
+
+            rl_asc_east = float(self.radal_look_data[0])
+            rl_asc_north = float(self.radal_look_data[1])
+            rl_asc_up = float(self.radal_look_data[2])
+            rl_desc_east = float(self.radal_look_data[3])
+            rl_desc_north = float(self.radal_look_data[4])
+            rl_desc_up = float(self.radal_look_data[5])
+
+            print("---> type of vector for timeseries = ", type(self.thispoint_gps_north))
+            gps_defo_east = np.array(self.thispoint_gps_east)
+            gps_defo_north = np.array(self.thispoint_gps_north)
+            gps_defo_up = np.array(self.thispoint_gps_up)
+            # Delphine solution
+            gps_los_asc = (gps_defo_east  * rl_asc_east) + (gps_defo_north * rl_asc_north) + (gps_defo_up  * rl_asc_up) 
+            gps_los_desc = (gps_defo_east * rl_desc_east) + (gps_defo_north  * rl_desc_north) + (gps_defo_up  * rl_desc_up) 
+ 
+            # gps_los_asc = (gps_defo_east  * rl_asc_east) + (gps_defo_north * rl_asc_north) + (gps_defo_up  * rl_asc_up) 
+            # gps_los_desc = (gps_defo_east * rl_desc_east) + (gps_defo_north  * rl_desc_north) + (gps_defo_up  * rl_desc_up) 
+ 
+
+            self.thispoint_gps_los_asc = gps_los_asc.tolist()
+            self.thispoint_gps_los_desc = gps_los_desc.tolist()
 
         # print("gps_date = ",self.thispoint_gps_date)
         # print("gps_east = ",self.thispoint_gps_east)
@@ -611,7 +638,14 @@ class PlotModel_gps(QObject):
         elif self.menu_orientation == "north":
             self.data_gps_for_temporal_graph = self.thispoint_gps_north
         elif self.menu_orientation == "up":
-            self.data_gps_for_temporal_graph = self.thispoint_gps_up    
+            self.data_gps_for_temporal_graph = self.thispoint_gps_up 
+        elif ((self.menu_orientation == "LOS_Asc") & self.radal_look_data_ok):
+            self.data_gps_for_temporal_graph = self.thispoint_gps_los_asc
+        elif ((self.menu_orientation == "LOS_Desc") & self.radal_look_data_ok):
+            self.data_gps_for_temporal_graph = self.thispoint_gps_los_desc       
+
+
+
         # self.data_gps_for_temporal_graph = self.thispoint_gps_up
         # self.data_for_spatial_graph = np.full((1), np.nan)
 

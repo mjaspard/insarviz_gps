@@ -3,7 +3,7 @@
 
 import pyqtgraph as pg
 import numpy as np
-import datetime
+import datetime, re
 
 from PyQt5.QtCore import (
     pyqtSignal, pyqtSlot,
@@ -11,10 +11,12 @@ from PyQt5.QtCore import (
 
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout,
+    QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QToolBar,
-    QLabel, QCheckBox, QComboBox
+    QLabel, QCheckBox, QComboBox, QLineEdit
     )
+
+from PyQt5.QtGui import QIntValidator,QDoubleValidator,QFont
 
 from insarviz.utils import (
     get_nearest
@@ -796,33 +798,71 @@ class myPlotWindow_gps(QWidget):
         self.toolbar.addWidget(self.theme_switch)
         self.toolbar.addWidget(QLabel('white'))
         self.toolbar.addSeparator()
-        if self. ptype == 'temporal':
-            self.ref_tick = QCheckBox('Reference', self)
-            self.ref_tick.setCheckable(True)
-        # self.ref_tick.stateChanged.connect(
-        #     lambda: self.plot_widget.connect_CurveClicked_Ref(
-        #         self.ref_tick))
-            self.ref_tick.stateChanged.connect(self.set_ref_status)
-            self.toolbar.addWidget(self.ref_tick)
-            self.toolbar.addSeparator()
 
-            self.toolbar.addWidget(QLabel('Stations'))
-            self.menu_station = QComboBox()
-            self.menu_station.addItems(self.plot_model.station_gps)
-            self.menu_station.currentIndexChanged.connect(self.update_station)
-            self.toolbar.addWidget(self.menu_station)
+        self.ref_tick = QCheckBox('Reference', self)
+        self.ref_tick.setCheckable(True)
+    # self.ref_tick.stateChanged.connect(
+    #     lambda: self.plot_widget.connect_CurveClicked_Ref(
+    #         self.ref_tick))
+        self.ref_tick.stateChanged.connect(self.set_ref_status)
+        self.toolbar.addWidget(self.ref_tick)
+        self.toolbar.addSeparator()
 
-            self.toolbar.addSeparator()
-            self.toolbar.addWidget(QLabel('Stations'))
-            self.menu_orientation = QComboBox()
-            self.menu_orientation.addItems(['east', 'north', 'up'])
-            self.menu_orientation.setCurrentText('up')
-            self.menu_orientation.currentIndexChanged.connect(self.update_station)
-            self.toolbar.addWidget(self.menu_orientation)
+        self.toolbar.addWidget(QLabel('Stations'))
+        self.menu_station = QComboBox()
+        self.menu_station.addItems(self.plot_model.station_gps)
+        self.menu_station.currentIndexChanged.connect(self.update_station)
+        self.toolbar.addWidget(self.menu_station)
+
+        self.toolbar.addSeparator()
+        self.toolbar.addWidget(QLabel('GPS dir.'))
+        self.menu_orientation = QComboBox()
+        self.menu_orientation.addItems(['east', 'north', 'up'])
+        self.menu_orientation.setCurrentText('up')
+        self.menu_orientation.currentIndexChanged.connect(self.update_station)
+        self.toolbar.addWidget(self.menu_orientation)
+
+
+        # Add Toolbar for entering LOS RadarLook information
+        self.toolbar_RL = QHBoxLayout()
+        self.RL_Asc_East = QLineEdit()
+        self.RL_Asc_East.textEdited.connect(self.check_radarlook)
+        self.RL_Asc_North = QLineEdit()
+        self.RL_Asc_North.textEdited.connect(self.check_radarlook)
+        self.RL_Asc_Up = QLineEdit()
+        self.RL_Asc_Up.textEdited.connect(self.check_radarlook)
+        self.RL_Desc_East = QLineEdit()
+        self.RL_Desc_East.textEdited.connect(self.check_radarlook)
+        self.RL_Desc_North = QLineEdit()
+        self.RL_Desc_North.textEdited.connect(self.check_radarlook)
+        self.RL_Desc_Up = QLineEdit()
+        self.RL_Desc_Up.textEdited.connect(self.check_radarlook)
+        self.btn_validate_RL = QPushButton("Validate")
+        self.btn_validate_RL.clicked.connect(self.validate_radarlook)
+        self.toolbar_RL.addWidget(QLabel('RDL Asc = ['))
+        self.toolbar_RL.addWidget(self.RL_Asc_East)
+        # self.toolbar_RL.addWidget(QLabel(','))
+        self.toolbar_RL.addWidget(self.RL_Asc_North)
+        # self.toolbar_RL.addWidget(QLabel(','))
+        self.toolbar_RL.addWidget(self.RL_Asc_Up)
+        self.toolbar_RL.addWidget(QLabel(']   RDL Desc = ['))
+        self.toolbar_RL.addWidget(self.RL_Desc_East)
+        # self.toolbar_RL.addWidget(QLabel(','))
+        self.toolbar_RL.addWidget(self.RL_Desc_North)
+        # self.toolbar_RL.addWidget(QLabel(','))
+        self.toolbar_RL.addWidget(self.RL_Desc_Up)
+        self.toolbar_RL.addWidget(QLabel(']  '))
+        self.toolbar_RL.addWidget(self.btn_validate_RL)
+        # Manage both Toolbar to be displayed
+
+
+
 
         # layout
         layout = QVBoxLayout()
+        # add actions and widgets
         layout.setMenuBar(self.toolbar)
+        layout.addLayout(self.toolbar_RL)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(5)
         # only for temporal plot:
@@ -835,6 +875,7 @@ class myPlotWindow_gps(QWidget):
             self.check_axes.stateChanged.connect(
                 lambda: self.ctrl_axes(self.check_axes))
             layout.addWidget(self.check_axes)
+
         layout.addWidget(self.plot_widget)
         self.setLayout(layout)
 
@@ -894,6 +935,9 @@ class myPlotWindow_gps(QWidget):
         """
         print("myPlotWindow_gps -- update_station")
 
+        # Manage RadarLook value and disbale LOS if not in range
+        print("----> Radar Look value (east) = ", self.RL_Asc_East.text())
+
 
         # rinitialise reference option
         self.ref_tick.setChecked(False)
@@ -909,6 +953,42 @@ class myPlotWindow_gps(QWidget):
 
         print("myPlotWindow_gps -- update_station -- finished")
 
+    def validate_radarlook(self):
+        """This function is called afetr editeing radar look data, 
+        it will validate value usingf regex check and activate LOS for GPS deformation,
+        Value in grey are ok and wrong value are deleted"""
+
+        print("myPlotWindow_gps -- validate_radarlook")
+        check = 0
+        self.plot_model.radal_look_data_ok = False
+        for value in [self.RL_Asc_East, self.RL_Asc_North, self.RL_Asc_Up, self.RL_Desc_East, self.RL_Desc_North, self.RL_Desc_Up]:
+   
+            print("---> type of value = ", type(value))
+            if re.search(r"^-?0(\.\d*)?$", str(value.text())) or re.search(r"^-?1(\.0+)?$", str(value.text())):  # ? means 0 or 1 occurence
+                value.setStyleSheet("color: grey;")
+                check += 1
+            else:
+                value.setStyleSheet("color: red;")
+
+
+        if check == 6:
+            print("---> activate LOS deformation")
+            self.btn_validate_RL.setEnabled(False)
+            self.menu_orientation.addItems(['LOS_Asc', 'LOS_Desc'])
+            self.plot_model.radal_look_data_ok = True
+            self.plot_model.radal_look_data = [self.RL_Asc_East.text(), self.RL_Asc_North.text(), self.RL_Asc_Up.text(), self.RL_Desc_East.text(), self.RL_Desc_North.text(), self.RL_Desc_Up.text()]
+
+    def check_radarlook(self):
+        """This function is called during editing Radar look value, it will turn from grey to black the text and re-enable the validate button"""
+
+        print("myPlotWindow_gps -- check_radarlook")
+        for value in [self.RL_Asc_East, self.RL_Asc_North, self.RL_Asc_Up, self.RL_Desc_East, self.RL_Desc_North, self.RL_Desc_Up]:
+
+                value.setStyleSheet("color: black;")
+                self.btn_validate_RL.setEnabled(True)
+                self.menu_orientation.removeItem(3)
+                self.menu_orientation.removeItem(4)
+                self.plot_model.radal_look_data_ok = False
 
 
 
